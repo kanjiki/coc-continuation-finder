@@ -23,6 +23,7 @@
 <script defer src="data/sheet-sync.js"></script>
 <script defer src="data/sheet-sync-merge.js"></script>
 <script defer src="app.js"></script>
+<script defer src="request-scope.js"></script>
 <script defer src="recommendation-feedback.js"></script>
 </head>
 <body>
@@ -85,6 +86,7 @@
   <div class="contribute-form">
     <label class="field"><span>元シナリオ <em>自由入力OK</em></span><input id="requestSource" type="text" list="requestSourceList" maxlength="160" autocomplete="off" placeholder="例：VOID / 未収録のシナリオでもOK"></label>
     <datalist id="requestSourceList"></datalist>
+    <label class="field candidate-scope-field"><span>継続形態 <em>任意</em></span><select id="requestScope"><option value="">わからない・指定なし</option><option value="自陣全員・複数人">自陣全員・複数人</option><option value="ペア">ペア・タイマン</option><option value="1人・HO単位">1人・HO単位</option></select></label>
     <div class="field candidate-fieldset">
       <div class="field-title"><span>出てほしい継続先候補</span><small>入力すると次の欄が自動で増えます。最大10件。</small></div>
       <div id="candidateFields" class="candidate-fields"></div>
@@ -93,7 +95,7 @@
       <button id="sendRequest" class="contribute-button" type="button">まとめて送る <span id="requestCount">0件</span></button>
       <p id="requestStatus" class="request-status" aria-live="polite"></p>
     </div>
-    <p class="privacy-note">名前・SNSアカウントなどの個人情報は収集しません。元シナリオ名と候補名だけを保存します。</p>
+    <p class="privacy-note">名前・SNSアカウントなどの個人情報は収集しません。元シナリオ名・候補名・任意の継続形態だけを保存します。</p>
   </div>
 </section>
 
@@ -110,7 +112,7 @@
   <p><b>継続実例</b>は「その組み合わせで遊ばれた例がある」ことを示すもので、相性や安全性を保証するものではありません。人数・継続条件・作者の利用条件は必ず販売／配布ページで確認してください。</p>
 </section>
 </main>
-<footer class="wrap footer-inner"><span>非公式ツール</span><span>COC CONTINUATION FINDER / v0.10.1</span></footer>
+<footer class="wrap footer-inner"><span>非公式ツール</span><span>COC CONTINUATION FINDER / v0.11.0</span></footer>
 <div id="toast" class="toast"></div>
 </body>
 </html>
