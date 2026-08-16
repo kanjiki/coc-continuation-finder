@@ -30,19 +30,22 @@ function augmentRow(row){
   const main=document.createElement('div');main.className='candidate-main';
   input.parentNode.insertBefore(main,input);main.appendChild(input);
 
+  const scopeWrap=document.createElement('label');scopeWrap.className='candidate-scope-wrap';
+  const scopeTitle=document.createElement('span');scopeTitle.className='candidate-inline-label';scopeTitle.textContent='継続形態';
   const scope=document.createElement('select');
   scope.className='candidate-scope-select';
   scope.setAttribute('aria-label','この候補の継続形態');
   scope.append(
-    createOption('','条件なし'),
+    createOption('','指定なし'),
     createOption('自陣全員・複数人','複数人'),
     createOption('ペア','ペア（PC＋PC）'),
     createOption('タイマン','タイマン（KPC＋PC）'),
     createOption('1人・HO単位','ソロ・HO単位')
   );
-  main.appendChild(scope);
+  scopeWrap.append(scopeTitle,scope);main.appendChild(scopeWrap);
 
   const detail=document.createElement('div');detail.className='candidate-detail-fields hidden';
+  const detailTitle=document.createElement('div');detailTitle.className='candidate-target-title';detailTitle.textContent='継続対象';
 
   const pairFields=document.createElement('div');pairFields.className='candidate-pair-fields hidden';
   const pc1Label=document.createElement('label'),pc1=document.createElement('input');pc1.className='candidate-pc1';
@@ -63,7 +66,7 @@ function augmentRow(row){
   const solo=document.createElement('input');solo.type='text';solo.maxLength=80;solo.className='candidate-solo';solo.placeholder='例：HO2 / 残されたPC';
   soloField.append(soloTitle,solo);
 
-  detail.append(pairFields,tiebreakFields,soloField);row.append(detail);
+  detail.append(detailTitle,pairFields,tiebreakFields,soloField);row.append(detail);
   scope.addEventListener('change',()=>updateDetailUI(row));
   updateDetailUI(row);
 }
