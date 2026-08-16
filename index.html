@@ -4,9 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>この自陣、次どこ行く？｜CoC継続先検索</title>
-<meta name="description" content="通過したCoCシナリオから、実際に遊ばれた継続先を理由付きで探します。販売・配布元も確認できます。">
+<meta name="description" content="通過したCoCシナリオから、実際に遊ばれた継続先を理由付きで探します。BOOTH・pixiv・TALTO等の販売・配布元も確認できます。">
+<meta name="theme-color" content="#111827">
 <meta property="og:title" content="この自陣、次どこ行く？">
-<meta property="og:description" content="元シナリオを選ぶだけ。継続先候補とBOOTH・pixiv・TALTO等の配布元を表示します。">
+<meta property="og:description" content="元シナリオを選ぶだけ。人力確認した継続実例から、次の一卓を探します。">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://kanjiki.github.io/coc-continuation-finder/">
 <meta name="twitter:card" content="summary">
@@ -20,37 +21,79 @@
 <script defer src="app.js"></script>
 </head>
 <body>
-<div id="testBanner" class="test hidden">友人テスト版です。使い勝手を率直に教えてください。</div>
-<header><div class="wrap hero"><p class="eyebrow">CoC CONTINUATION FINDER</p><h1>この自陣、<br>次どこ行く？</h1><p>通過したシナリオを選ぶと、人力確認した継続実例から次の候補を表示します。</p></div></header>
-<main class="wrap">
-<section class="panel">
-<h2>元シナリオを選ぶ</h2>
-<p class="muted">一覧には正式名称だけを表示します。</p>
-<div class="searchrow">
-<select id="source"><option value="">正式名称を選択</option></select>
-<select id="scope"><option value="">継続形態を問わない</option><option value="group">自陣全員・複数人</option><option value="pair">ペア</option><option value="solo">1人・HO単位</option></select>
-<button id="go">候補を見る</button>
-</div>
-<label class="check"><input type="checkbox" id="caution" checked> 注意事例も表示</label>
+<div id="testBanner" class="test hidden">FRIEND TEST — 使い勝手を率直に教えてください。</div>
+<header class="site-hero">
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <p class="eyebrow">COC CONTINUATION FINDER</p>
+      <h1>この自陣、<br><span>次どこ行く？</span></h1>
+      <p class="hero-lead">通過したシナリオを選ぶだけ。人力で確認した継続実例から、探索者たちの「次の一卓」を理由付きで探します。</p>
+      <div id="heroStats" class="hero-stats" aria-label="収録データ概要"></div>
+    </div>
+    <aside class="hero-card">
+      <p class="hero-card-label">ABOUT</p>
+      <strong>人気順ではなく、<br>「実際に継続された」を手がかりに。</strong>
+      <p>候補ごとに継続形態・実卓確認種別・販売／配布元を表示します。SNSの根拠投稿そのものは公開しません。</p>
+    </aside>
+  </div>
+</header>
+
+<main class="wrap main-stack">
+<section class="panel search-panel">
+  <div class="section-head">
+    <div><p class="section-kicker">FIND NEXT SESSION</p><h2>元シナリオから探す</h2></div>
+    <p class="section-note">一覧は正式名称のみ</p>
+  </div>
+  <div class="searchrow">
+    <label class="field"><span>元シナリオ</span><select id="source"><option value="">正式名称を選択</option></select></label>
+    <label class="field"><span>継続形態</span><select id="scope"><option value="">問わない</option><option value="group">自陣全員・複数人</option><option value="pair">ペア</option><option value="solo">1人・HO単位</option></select></label>
+    <button id="go" class="primary-action" type="button">候補を見る <span aria-hidden="true">→</span></button>
+  </div>
+  <label class="check"><input type="checkbox" id="caution" checked> 注意事例も表示する</label>
 </section>
-<section class="panel"><div class="resulthead"><h2>継続先候補</h2><span id="summary" class="muted">元シナリオを選んでください。</span></div><div id="results" class="empty">ここに候補が表示されます。</div></section>
-<section id="requestPanel" class="panel">
-<h2>出てほしい継続先候補</h2>
-<p class="muted">「この元シナリオなら、この継続先も出てほしい」という候補があれば教えてください。任意です。</p>
-<div class="requestrow">
-<input id="requestedCandidate" type="text" maxlength="160" placeholder="継続先シナリオの正式名称">
-<button id="sendRequest" type="button">候補を送る</button>
-</div>
-<p id="requestStatus" class="muted"></p>
+
+<section class="panel results-panel">
+  <div class="resulthead"><div><p class="section-kicker">RESULTS</p><h2>継続先候補</h2></div><span id="summary" class="muted">元シナリオを選んでください。</span></div>
+  <div id="results" class="empty">ここに継続先候補が表示されます。</div>
 </section>
-<section id="feedback" class="panel hidden">
-<h2>30秒だけ感想</h2><p class="muted">この形式を今後使いたいですか？</p>
-<div class="choices"><button data-intent="ぜひ使いたい">ぜひ使いたい</button><button data-intent="条件次第">条件次第</button><button data-intent="使わない">使わない</button></div>
-<textarea id="comment" rows="3" placeholder="欲しい候補、迷った点など（任意）"></textarea>
-<button id="sendFeedback">回答文をコピー</button><p id="feedbackStatus" class="muted"></p>
+
+<section id="requestPanel" class="panel contribute-panel">
+  <div class="contribute-copy">
+    <p class="section-kicker light">BUILD THIS TOGETHER</p>
+    <h2>あなたの一卓が、<br>次の誰かの一卓になる。</h2>
+    <p>このツールは、「この探索者たちでもう一度遊びたい」と思った瞬間を、次の卓へつなぐために作っています。</p>
+    <p><strong>あなたが何気なく遊んだ継続先が、別の誰かにとってはずっと探していた答えかもしれません。</strong> 公式の続編じゃなくても、定番じゃなくても大丈夫。実際にその探索者で遊んだ、あるいは「この組み合わせを候補に出してほしい」という一本があれば、ぜひ少しだけ知恵を分けてください。</p>
+    <p class="contribute-small">1本だけでも大歓迎です。集まった候補はそのまま掲載せず、確認してからデータベースへ反映します。</p>
+  </div>
+  <div class="contribute-form">
+    <label class="field"><span>元シナリオ <em>自由入力OK</em></span><input id="requestSource" type="text" list="requestSourceList" maxlength="160" autocomplete="off" placeholder="例：VOID / 未収録のシナリオでもOK"></label>
+    <datalist id="requestSourceList"></datalist>
+    <div class="field candidate-fieldset">
+      <div class="field-title"><span>出てほしい継続先候補</span><small>入力すると次の欄が自動で増えます。最大10件。</small></div>
+      <div id="candidateFields" class="candidate-fields"></div>
+    </div>
+    <div class="request-actions">
+      <button id="sendRequest" class="contribute-button" type="button">まとめて送る <span id="requestCount">0件</span></button>
+      <p id="requestStatus" class="request-status" aria-live="polite"></p>
+    </div>
+    <p class="privacy-note">名前・SNSアカウントなどの個人情報は収集しません。元シナリオ名と候補名だけを保存します。</p>
+  </div>
 </section>
-<section class="panel note"><h2>表示について</h2><p><b>継続実例</b>は「その組み合わせで遊ばれた例がある」ことを示し、相性を保証するものではありません。人数・継続条件・作者の利用条件は販売／配布ページで確認してください。</p><p>根拠となったSNS投稿は一般画面には表示していません。</p></section>
+
+<section id="feedback" class="panel feedback-panel hidden">
+  <p class="section-kicker">FRIEND TEST</p>
+  <h2>30秒だけ感想</h2><p class="muted">この形式を今後使いたいですか？</p>
+  <div class="choices"><button data-intent="ぜひ使いたい">ぜひ使いたい</button><button data-intent="条件次第">条件次第</button><button data-intent="使わない">使わない</button></div>
+  <textarea id="comment" rows="3" placeholder="迷った点、足りない情報など（任意）"></textarea>
+  <button id="sendFeedback" type="button">回答文をコピー</button><p id="feedbackStatus" class="muted"></p>
+</section>
+
+<section class="panel note-panel">
+  <div><p class="section-kicker">BEFORE YOU PLAY</p><h2>表示について</h2></div>
+  <p><b>継続実例</b>は「その組み合わせで遊ばれた例がある」ことを示すもので、相性や安全性を保証するものではありません。人数・継続条件・作者の利用条件は必ず販売／配布ページで確認してください。</p>
+</section>
 </main>
-<footer class="wrap">非公式ツール / v0.7.0</footer>
+<footer class="wrap footer-inner"><span>非公式ツール</span><span>COC CONTINUATION FINDER / v0.8.0</span></footer>
 <div id="toast" class="toast"></div>
-</body></html>
+</body>
+</html>
