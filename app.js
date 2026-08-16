@@ -1,33 +1,72 @@
 (()=>{'use strict';
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const CONFIG=window.COC_CONFIG||{};
-let sources=[],edges=[],current='',intent='',isTest=false;
+let sources=[],edges=[],current='',intent='',isTest=false,sourceSearchIndex=[];
 
 document.addEventListener('DOMContentLoaded',()=>{
   const custom=window.COC_CUSTOM;
   if(custom&&Array.isArray(custom.sources)&&Array.isArray(custom.edges)){sources=custom.sources;edges=custom.edges}else{sources=window.COC_SOURCES||[];edges=window.COC_EDGES||[]}
-  renderSources();renderRequestSourceSuggestions();renderStats();initCandidateFields();bind();
+  renderSources();buildSourceSearchIndex();renderRequestSourceSuggestions();renderStats();initCandidateFields();bind();renderSourceSearchResults('');
   const q=new URLSearchParams(location.search);
   isTest=q.get('test')==='1';
   if(isTest){$('#testBanner').classList.remove('hidden');$('#feedback').classList.remove('hidden')}
   const s=q.get('scenario');
-  if(s&&sources.some(x=>x.n===s)){$('#source').value=s;search()}
+  if(s&&sources.some(x=>x.n===s)){$('#source').value=s;$('#sourceSearch').value=s;toggleSourceClear();search()}
 });
 
 function renderSources(){sources.slice().sort((a,b)=>a.n.localeCompare(b.n,'ja')).forEach(x=>{const o=document.createElement('option');o.value=x.n;o.textContent=x.n;$('#source').append(o)})}
+function buildSourceSearchIndex(){sourceSearchIndex=sources.slice().sort((a,b)=>a.n.localeCompare(b.n,'ja')).map(x=>({source:x,name:normalizeSearch(x.n),aliases:(Array.isArray(x.a)?x.a:[]).map(normalizeSearch)}))}
 function renderRequestSourceSuggestions(){const dl=$('#requestSourceList');sources.slice().sort((a,b)=>a.n.localeCompare(b.n,'ja')).forEach(x=>{const o=document.createElement('option');o.value=x.n;dl.append(o)})}
 function renderStats(){const targets=new Set(edges.map(e=>e.t));const linked=edges.filter(e=>Array.isArray(e.d)&&e.d.length).length;$('#heroStats').innerHTML=`<span><b>${sources.length}</b> 元シナリオ</span><span><b>${edges.length}</b> 継続実例</span><span><b>${targets.size}</b> 継続先</span><span><b>${linked}</b> 配布先確認済み</span>`}
 
 function bind(){
-  $('#go').onclick=search;
-  $('#source').onchange=search;
+  $('#go').onclick=commitSourceSearch;
   $('#scope').onchange=()=>current&&render();
   $('#caution').onchange=()=>current&&render();
   $('#requestSource').addEventListener('input',()=>{$('#requestSource').dataset.auto='0'});
+  $('#sourceSearch').addEventListener('input',onSourceSearchInput);
+  $('#sourceSearch').addEventListener('focus',()=>{if($('#sourceSearch').value.trim())renderSourceSearchResults($('#sourceSearch').value)});
+  $('#sourceSearch').addEventListener('keydown',onSourceSearchKeydown);
+  $('#sourceClear').onclick=clearSourceSearch;
+  $('#sourceResults').addEventListener('click',e=>{const b=e.target.closest('[data-source-name]');if(b)selectSource(b.dataset.sourceName)});
+  document.addEventListener('click',e=>{if(!e.target.closest('.source-picker'))hideSourceResults()});
   $$('[data-intent]').forEach(b=>b.onclick=()=>{intent=b.dataset.intent;$$('[data-intent]').forEach(x=>x.classList.toggle('active',x===b))});
   $('#sendFeedback').onclick=feedback;
   $('#sendRequest').onclick=requestCandidate;
 }
+
+function normalizeSearch(v){return String(v??'').normalize('NFKC').toLowerCase().replace(/[ァ-ヶ]/g,c=>String.fromCharCode(c.charCodeAt(0)-0x60)).replace(/[\s・･!！?？"'“”‘’「」『』【】（）()［］\[\]＿_ー－—–・,.，。:：;；/\\]/g,'')}
+function sourceScore(item,q){if(!q)return 99;if(item.name===q)return 0;if(item.aliases.some(a=>a===q))return 1;if(item.name.startsWith(q))return 2;if(item.aliases.some(a=>a.startsWith(q)))return 3;if(item.name.includes(q))return 4;if(item.aliases.some(a=>a.includes(q)))return 5;return 99}
+function findSourceMatches(raw){const q=normalizeSearch(raw);if(!q)return[];return sourceSearchIndex.map(item=>({item,score:sourceScore(item,q)})).filter(x=>x.score<99).sort((a,b)=>a.score-b.score||a.item.source.n.localeCompare(b.item.source.n,'ja')).map(x=>x.item.source)}
+function resolveExactSource(raw){const q=normalizeSearch(raw);if(!q)return null;const row=sourceSearchIndex.find(item=>item.name===q||item.aliases.some(a=>a===q));return row?row.source:null}
+function renderSourceSearchResults(raw){
+  const box=$('#sourceResults'),meta=$('#sourceSearchMeta');if(!box||!meta)return;
+  const text=String(raw||'').trim();
+  if(!text){box.innerHTML='';box.classList.add('hidden');$('#sourceSearch').setAttribute('aria-expanded','false');meta.textContent=`${sources.length}件から検索`;return}
+  const matches=findSourceMatches(text).slice(0,12);
+  meta.textContent=matches.length?`${matches.length}件表示${findSourceMatches(text).length>12?'（上位12件）':''}`:'0件';
+  if(!matches.length){box.innerHTML='<div class="source-nohit">該当する収録シナリオがありません</div>';box.classList.remove('hidden');$('#sourceSearch').setAttribute('aria-expanded','true');return}
+  box.innerHTML=matches.map(x=>`<button type="button" class="source-result" role="option" data-source-name="${esc(x.n)}"><span>${esc(x.n)}</span><small>正式名称</small></button>`).join('');
+  box.classList.remove('hidden');$('#sourceSearch').setAttribute('aria-expanded','true');
+}
+function onSourceSearchInput(){
+  const input=$('#sourceSearch');toggleSourceClear();
+  if(current&&normalizeSearch(input.value)!==normalizeSearch(current)){current='';$('#source').value='';render();const q=new URLSearchParams(location.search);q.delete('scenario');history.replaceState(null,'',`${location.pathname}${q.toString()?`?${q}`:''}`)}
+  renderSourceSearchResults(input.value);
+}
+function onSourceSearchKeydown(e){if(e.key==='Escape'){hideSourceResults();return}if(e.key==='Enter'){e.preventDefault();commitSourceSearch()}}
+function commitSourceSearch(){
+  const raw=$('#sourceSearch').value.trim();
+  if(!raw){clearSourceSearch();toast('元シナリオ名を入力してください');return}
+  const exact=resolveExactSource(raw);if(exact){selectSource(exact.n);return}
+  const matches=findSourceMatches(raw);if(matches.length===1){selectSource(matches[0].n);return}
+  renderSourceSearchResults(raw);
+  toast(matches.length?'候補から元シナリオを選んでください':'収録シナリオが見つかりません');
+}
+function selectSource(name){const found=sources.find(x=>x.n===name);if(!found)return;$('#source').value=found.n;$('#sourceSearch').value=found.n;toggleSourceClear();hideSourceResults();search()}
+function clearSourceSearch(){current='';$('#source').value='';$('#sourceSearch').value='';toggleSourceClear();hideSourceResults();renderSourceSearchResults('');const q=new URLSearchParams(location.search);q.delete('scenario');history.replaceState(null,'',`${location.pathname}${q.toString()?`?${q}`:''}`);render();$('#sourceSearch').focus()}
+function hideSourceResults(){const box=$('#sourceResults');if(box)box.classList.add('hidden');const input=$('#sourceSearch');if(input)input.setAttribute('aria-expanded','false')}
+function toggleSourceClear(){const b=$('#sourceClear');if(b)b.classList.toggle('hidden',!$('#sourceSearch').value)}
 
 function scopeType(v){if(!v)return'';if(/ペア/.test(v))return'pair';if(/1人|HO単位/.test(v))return'solo';return'group'}
 function search(){
@@ -41,7 +80,7 @@ function search(){
 }
 
 function render(){
-  if(!current){$('#summary').textContent='元シナリオを選んでください。';$('#results').className='empty';$('#results').textContent='ここに継続先候補が表示されます。';return}
+  if(!current){$('#summary').textContent='元シナリオを検索して選んでください。';$('#results').className='empty';$('#results').textContent='ここに継続先候補が表示されます。';return}
   let rows=edges.filter(e=>e.s===current);
   const sc=$('#scope').value;if(sc)rows=rows.filter(e=>scopeType(e.c)===sc);
   if(!$('#caution').checked)rows=rows.filter(e=>e.st!=='注意');
