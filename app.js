@@ -68,7 +68,14 @@ function clearSourceSearch(){current='';$('#source').value='';$('#sourceSearch')
 function hideSourceResults(){const box=$('#sourceResults');if(box)box.classList.add('hidden');const input=$('#sourceSearch');if(input)input.setAttribute('aria-expanded','false')}
 function toggleSourceClear(){const b=$('#sourceClear');if(b)b.classList.toggle('hidden',!$('#sourceSearch').value)}
 
-function scopeType(v){if(!v)return'';if(/ペア/.test(v))return'pair';if(/1人|HO単位/.test(v))return'solo';return'group'}
+function scopeType(v){
+  const s=String(v??'').trim();
+  if(!s||/^(指定なし|不明|未設定|問わない)$/.test(s))return'';
+  if(/1人|一人|ソロ|HO単位|片ロス/.test(s))return'solo';
+  if(/タイマン|KPC|PC|ペア|2人|二人|ふたり/.test(s))return'pair';
+  if(/自陣全員|複数人|複数|全員|グループ|3人|4人|5人|6人/.test(s))return'group';
+  return'';
+}
 function search(){
   current=$('#source').value;
   const q=new URLSearchParams(location.search);
