@@ -14,6 +14,7 @@
 <link rel="canonical" href="https://kanjiki.github.io/coc-continuation-finder/">
 <link rel="stylesheet" href="styles.css">
 <link rel="stylesheet" href="source-search.css">
+<link rel="stylesheet" href="request-scope.css">
 <link rel="stylesheet" href="recommendation-feedback.css">
 <script defer src="config.js"></script>
 <script defer src="data/sources.js"></script>
@@ -79,23 +80,22 @@
   <div class="contribute-copy">
     <p class="section-kicker light">BUILD THIS TOGETHER</p>
     <h2>あなたの一卓が、<br>次の誰かの一卓になる。</h2>
-    <p>このツールは、「この探索者たちでもう一度遊びたい」と思った瞬間を、次の卓へつなぐために作っています。</p>
-    <p><strong>あなたが何気なく遊んだ継続先が、別の誰かにとってはずっと探していた答えかもしれません。</strong> 公式の続編じゃなくても、定番じゃなくても大丈夫。実際にその探索者で遊んだ、あるいは「この組み合わせを候補に出してほしい」という一本があれば、ぜひ少しだけ知恵を分けてください。</p>
-    <p class="contribute-small">1本だけでも大歓迎です。集まった候補はそのまま掲載せず、確認してからデータベースへ反映します。</p>
+    <p>実際に遊んだ継続先や、「この組み合わせも候補に出してほしい」という一本があれば教えてください。</p>
+    <p><strong>HOやKPCの指定がある場合も残せます。</strong> 普段はシナリオ名だけでOK。必要な候補だけ「継続条件を追加」を開いて入力できます。</p>
+    <p class="contribute-small">投稿内容はそのまま掲載せず、シナリオ名・販売元などの事実情報を確認してから反映します。</p>
   </div>
   <div class="contribute-form">
     <label class="field"><span>元シナリオ <em>自由入力OK</em></span><input id="requestSource" type="text" list="requestSourceList" maxlength="160" autocomplete="off" placeholder="例：VOID / 未収録のシナリオでもOK"></label>
     <datalist id="requestSourceList"></datalist>
-    <label class="field candidate-scope-field"><span>継続形態 <em>任意</em></span><select id="requestScope"><option value="">わからない・指定なし</option><option value="自陣全員・複数人">自陣全員・複数人</option><option value="ペア">ペア・タイマン</option><option value="1人・HO単位">1人・HO単位</option></select></label>
     <div class="field candidate-fieldset">
-      <div class="field-title"><span>出てほしい継続先候補</span><small>入力すると次の欄が自動で増えます。最大10件。</small></div>
+      <div class="field-title"><span>継続先候補</span><small>候補ごとにHO・KPC条件を追加できます。最大10件。</small></div>
       <div id="candidateFields" class="candidate-fields"></div>
     </div>
     <div class="request-actions">
       <button id="sendRequest" class="contribute-button" type="button">まとめて送る <span id="requestCount">0件</span></button>
       <p id="requestStatus" class="request-status" aria-live="polite"></p>
     </div>
-    <p class="privacy-note">名前・SNSアカウントなどの個人情報は収集しません。元シナリオ名・候補名・任意の継続形態だけを保存します。</p>
+    <p class="privacy-note">名前・SNSアカウントなどの個人情報は収集しません。元シナリオ名、候補名、任意で継続形態・HO/KPC条件を保存します。</p>
   </div>
 </section>
 
@@ -112,7 +112,7 @@
   <p><b>継続実例</b>は「その組み合わせで遊ばれた例がある」ことを示すもので、相性や安全性を保証するものではありません。人数・継続条件・作者の利用条件は必ず販売／配布ページで確認してください。</p>
 </section>
 </main>
-<footer class="wrap footer-inner"><span>非公式ツール</span><span>COC CONTINUATION FINDER / v0.11.0</span></footer>
+<footer class="wrap footer-inner"><span>非公式ツール</span><span>COC CONTINUATION FINDER / v0.12.0</span></footer>
 <div id="toast" class="toast"></div>
 </body>
 </html>
