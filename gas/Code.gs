@@ -36,7 +36,7 @@ function doPost(e) {
 function saveCandidateRequest_(data) {
   const source = clean_(data.source, 160);
   const candidate = clean_(data.candidate, 160);
-  const scope = normalizeScope_(data.scope);
+  const scope = composeScope_(data.scope, data.scopeDetail);
   const mode = data.mode === 'test' ? '友人テスト' : '通常版';
   if (!source || !candidate) throw new Error('Missing required field');
 
@@ -52,7 +52,6 @@ function saveCandidateRequest_(data) {
   try {
     const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(REQUEST_SHEET_NAME);
     if (!sheet) throw new Error('Requests sheet not found');
-    // A:H。H列へユーザー指定の継続形態を保存する。未指定なら空欄。
     sheet.appendRow([
       new Date(),
       safeCell_(source),
@@ -61,7 +60,7 @@ function saveCandidateRequest_(data) {
       '要確認',
       '',
       '',
-      scope
+      safeCell_(scope)
     ]);
   } finally {
     lock.releaseLock();
@@ -94,7 +93,6 @@ function buildSiteSyncJs_() {
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return 'window.COC_SHEET_SYNC={sources:[],edges:[],generatedAt:"' + new Date().toISOString() + '"};';
 
-  // A:N
   const rows = sheet.getRange(2, 1, lastRow - 1, 14).getDisplayValues();
   const edgeMap = {};
   const sourceSet = {};
@@ -107,7 +105,7 @@ function buildSiteSyncJs_() {
 
     const memo = clean_(row[5], 500);
     const publicType = clean_(row[6], 20) || '推薦';
-    const explicitScope = clean_(row[7], 80);
+    const explicitScope = clean_(row[7], 160);
     const evidence = clean_(row[8], 80) || '利用者提供・確認済み';
     const reason = clean_(row[9], 300) || '利用者から寄せられ、確認済みの継続候補です。';
     const scope = inferScope_(explicitScope, memo, reason);
@@ -133,31 +131,45 @@ function buildSiteSyncJs_() {
 
   const sources = Object.keys(sourceSet).sort().map(function(name) { return { n: name }; });
   const edges = Object.keys(edgeMap).sort().map(function(key) { return edgeMap[key]; });
-  const payload = {
-    sources: sources,
-    edges: edges,
-    generatedAt: new Date().toISOString()
-  };
+  const payload = {sources: sources, edges: edges, generatedAt: new Date().toISOString()};
   return 'window.COC_SHEET_SYNC=' + JSON.stringify(payload) + ';';
 }
 
-function normalizeScope_(value) {
-  const s = clean_(value, 80);
+function scopeBase_(value) {
+  const s = clean_(value, 160);
   if (!s || /^(指定なし|不明|未設定|問わない)$/.test(s)) return '';
+  if (/^タイマン(?:｜|$)/.test(s)) return 'タイマン';
   if (/1人|一人|ソロ|HO単位|片ロス/.test(s)) return '1人・HO単位';
   if (/タイマン|KPC|PC|ペア|2人|二人|ふたり/.test(s)) return 'ペア';
   if (/自陣全員|複数人|複数|全員|グループ|3人|三人|4人|四人|5人|五人|6人|六人/.test(s)) return '自陣全員・複数人';
-  return s;
+  return '';
+}
+
+function composeScope_(scopeValue, detailValue) {
+  const rawScope = clean_(scopeValue, 80);
+  const detail = clean_(detailValue, 180);
+  if (!rawScope) return '';
+  const base = scopeBase_(rawScope) || rawScope;
+  return detail ? clean_(base + '｜' + detail, 240) : base;
+}
+
+function normalizeExplicitScope_(value) {
+  const s = clean_(value, 240);
+  if (!s || /^(指定なし|不明|未設定|問わない)$/.test(s)) return '';
+  const base = scopeBase_(s);
+  if (!base) return s;
+  if (s.indexOf('｜') >= 0) return s;
+  if (/KPC|PC|HO\d+|片ロス/.test(s) && s !== base) return s;
+  return base;
 }
 
 function inferScope_(explicitScope, memo, reason) {
-  const explicit = normalizeScope_(explicitScope);
+  const explicit = normalizeExplicitScope_(explicitScope);
   if (explicit) return explicit;
 
   const text = clean_([memo, reason].filter(Boolean).join(' '), 800);
   if (!text) return '指定なし';
 
-  // より限定的な表現を先に評価する。
   if (/片ロス|1人|一人|ソロ|HO単位/.test(text)) return '1人・HO単位';
   if (/HO\d+KPC|KPC|\/PC|／PC|タイマン|ペア|2人|二人|ふたり/.test(text)) return 'ペア';
   if (/自陣全員|複数人|複数|全員|グループ|3人|三人|4人|四人|5人|五人|6人|六人/.test(text)) return '自陣全員・複数人';
