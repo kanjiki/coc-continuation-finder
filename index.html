@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>この自陣、次どこ行く？｜CoC継続先検索</title>
+<meta name="description" content="通過したCoCシナリオから、実際に遊ばれた継続先を理由付きで探します。販売・配布元も確認できます。">
+<meta property="og:title" content="この自陣、次どこ行く？">
+<meta property="og:description" content="元シナリオを選ぶだけ。継続先候補とBOOTH・pixiv・TALTO等の配布元を表示します。">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kanjiki.github.io/coc-continuation-finder/">
+<meta name="twitter:card" content="summary">
+<link rel="canonical" href="https://kanjiki.github.io/coc-continuation-finder/">
+<link rel="stylesheet" href="styles.css">
+<script defer src="data/sources.js"></script>
+<script defer src="data/part1.js"></script><script defer src="data/part2.js"></script>
+<script defer src="data/part3.js"></script><script defer src="data/part4.js"></script>
+<script defer src="data/part5.js"></script><script defer src="data/custom.js"></script>
+<script defer src="app.js"></script>
+</head>
+<body>
+<div id="testBanner" class="test hidden">友人テスト版です。使い勝手を率直に教えてください。</div>
+<header><div class="wrap hero"><p class="eyebrow">CoC CONTINUATION FINDER</p><h1>この自陣、<br>次どこ行く？</h1><p>通過したシナリオを選ぶと、人力確認した継続実例から次の候補を表示します。</p></div></header>
+<main class="wrap">
+<section class="panel">
+<h2>元シナリオを選ぶ</h2>
+<p class="muted">一覧には正式名称だけを表示します。</p>
+<div class="searchrow">
+<select id="source"><option value="">正式名称を選択</option></select>
+<select id="scope"><option value="">継続形態を問わない</option><option value="group">自陣全員・複数人</option><option value="pair">ペア</option><option value="solo">1人・HO単位</option></select>
+<button id="go">候補を見る</button>
+</div>
+<label class="check"><input type="checkbox" id="caution" checked> 注意事例も表示</label>
+</section>
+<section class="panel"><div class="resulthead"><h2>継続先候補</h2><span id="summary" class="muted">元シナリオを選んでください。</span></div><div id="results" class="empty">ここに候補が表示されます。</div></section>
+<section id="feedback" class="panel hidden">
+<h2>30秒だけ感想</h2><p class="muted">この形式を今後使いたいですか？</p>
+<div class="choices"><button data-intent="ぜひ使いたい">ぜひ使いたい</button><button data-intent="条件次第">条件次第</button><button data-intent="使わない">使わない</button></div>
+<textarea id="comment" rows="3" placeholder="欲しい候補、迷った点など（任意）"></textarea>
+<button id="sendFeedback">回答文をコピー</button><p id="feedbackStatus" class="muted"></p>
+</section>
+<section class="panel note"><h2>表示について</h2><p><b>継続実例</b>は「その組み合わせで遊ばれた例がある」ことを示し、相性を保証するものではありません。人数・継続条件・作者の利用条件は販売／配布ページで確認してください。</p><p>根拠となったSNS投稿は一般画面には表示していません。</p></section>
+</main>
+<footer class="wrap">非公式ツール / v0.6.0</footer>
+<div id="toast" class="toast"></div>
+</body></html>
