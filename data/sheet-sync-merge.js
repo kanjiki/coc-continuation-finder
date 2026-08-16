@@ -7,7 +7,12 @@ const baseEdges=custom&&Array.isArray(custom.edges)?custom.edges:(window.COC_EDG
 
 const sourceMap=new Map();
 baseSources.forEach(x=>{if(x&&x.n)sourceMap.set(x.n,x)});
-sync.sources.forEach(x=>{if(x&&x.n)sourceMap.set(x.n,x)});
+sync.sources.forEach(x=>{
+  if(!x||!x.n)return;
+  const prev=sourceMap.get(x.n)||{};
+  const aliases=[...(Array.isArray(prev.a)?prev.a:[]),...(Array.isArray(x.a)?x.a:[])];
+  sourceMap.set(x.n,{...prev,...x,a:[...new Set(aliases)]});
+});
 
 const edgeMap=new Map();
 baseEdges.forEach(e=>{if(e&&e.s&&e.t)edgeMap.set(`${e.s}\u0000${e.t}`,e)});
