@@ -33,6 +33,15 @@
 <label class="check"><input type="checkbox" id="caution" checked> 注意事例も表示</label>
 </section>
 <section class="panel"><div class="resulthead"><h2>継続先候補</h2><span id="summary" class="muted">元シナリオを選んでください。</span></div><div id="results" class="empty">ここに候補が表示されます。</div></section>
+<section id="requestPanel" class="panel">
+<h2>出てほしい継続先候補</h2>
+<p class="muted">「この元シナリオなら、この継続先も出てほしい」という候補があれば教えてください。任意です。</p>
+<div class="requestrow">
+<input id="requestedCandidate" type="text" maxlength="160" placeholder="継続先シナリオの正式名称">
+<button id="sendRequest" type="button">候補を送る</button>
+</div>
+<p id="requestStatus" class="muted"></p>
+</section>
 <section id="feedback" class="panel hidden">
 <h2>30秒だけ感想</h2><p class="muted">この形式を今後使いたいですか？</p>
 <div class="choices"><button data-intent="ぜひ使いたい">ぜひ使いたい</button><button data-intent="条件次第">条件次第</button><button data-intent="使わない">使わない</button></div>
@@ -41,6 +50,6 @@
 </section>
 <section class="panel note"><h2>表示について</h2><p><b>継続実例</b>は「その組み合わせで遊ばれた例がある」ことを示し、相性を保証するものではありません。人数・継続条件・作者の利用条件は販売／配布ページで確認してください。</p><p>根拠となったSNS投稿は一般画面には表示していません。</p></section>
 </main>
-<footer class="wrap">非公式ツール / v0.6.0</footer>
+<footer class="wrap">非公式ツール / v0.6.1</footer>
 <div id="toast" class="toast"></div>
 </body></html>
