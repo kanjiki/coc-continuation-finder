@@ -46,10 +46,22 @@
 <section class="panel search-panel">
   <div class="section-head">
     <div><p class="section-kicker">FIND NEXT SESSION</p><h2>元シナリオから探す</h2></div>
-    <p class="section-note">一覧は正式名称のみ</p>
+    <p class="section-note">正式名称・登録済み略称から検索できます</p>
   </div>
   <div class="searchrow">
-    <label class="field"><span>元シナリオ</span><select id="source"><option value="">正式名称を選択</option></select></label>
+    <label class="field source-search-field">
+      <span>元シナリオ <em>検索対応</em></span>
+      <div class="source-picker">
+        <div class="source-input-wrap">
+          <span class="source-search-icon" aria-hidden="true">⌕</span>
+          <input id="sourceSearch" type="search" maxlength="160" autocomplete="off" placeholder="例：VOID / 誰ロク / ロトアダ" aria-controls="sourceResults" aria-expanded="false">
+          <button id="sourceClear" class="source-clear hidden" type="button" aria-label="検索をクリア">×</button>
+        </div>
+        <div id="sourceResults" class="source-results hidden" role="listbox" aria-label="元シナリオ検索結果"></div>
+      </div>
+      <small id="sourceSearchMeta" class="source-search-meta"></small>
+      <select id="source" class="source-native" aria-hidden="true" tabindex="-1"><option value="">正式名称を選択</option></select>
+    </label>
     <label class="field"><span>継続形態</span><select id="scope"><option value="">問わない</option><option value="group">自陣全員・複数人</option><option value="pair">ペア</option><option value="solo">1人・HO単位</option></select></label>
     <button id="go" class="primary-action" type="button">候補を見る <span aria-hidden="true">→</span></button>
   </div>
@@ -97,7 +109,7 @@
   <p><b>継続実例</b>は「その組み合わせで遊ばれた例がある」ことを示すもので、相性や安全性を保証するものではありません。人数・継続条件・作者の利用条件は必ず販売／配布ページで確認してください。</p>
 </section>
 </main>
-<footer class="wrap footer-inner"><span>非公式ツール</span><span>COC CONTINUATION FINDER / v0.9.1</span></footer>
+<footer class="wrap footer-inner"><span>非公式ツール</span><span>COC CONTINUATION FINDER / v0.10.0</span></footer>
 <div id="toast" class="toast"></div>
 </body>
 </html>
