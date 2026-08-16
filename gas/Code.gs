@@ -36,6 +36,7 @@ function doPost(e) {
 function saveCandidateRequest_(data) {
   const source = clean_(data.source, 160);
   const candidate = clean_(data.candidate, 160);
+  const scope = normalizeScope_(data.scope);
   const mode = data.mode === 'test' ? '友人テスト' : '通常版';
   if (!source || !candidate) throw new Error('Missing required field');
 
@@ -51,7 +52,17 @@ function saveCandidateRequest_(data) {
   try {
     const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(REQUEST_SHEET_NAME);
     if (!sheet) throw new Error('Requests sheet not found');
-    sheet.appendRow([new Date(), safeCell_(source), safeCell_(candidate), mode, '要確認', '']);
+    // A:H。H列へユーザー指定の継続形態を保存する。未指定なら空欄。
+    sheet.appendRow([
+      new Date(),
+      safeCell_(source),
+      safeCell_(candidate),
+      mode,
+      '要確認',
+      '',
+      '',
+      scope
+    ]);
   } finally {
     lock.releaseLock();
   }
@@ -94,10 +105,12 @@ function buildSiteSyncJs_() {
     const status = clean_(row[4], 40);
     if (!source || !target || status !== PUBLIC_STATUS) return;
 
+    const memo = clean_(row[5], 500);
     const publicType = clean_(row[6], 20) || '推薦';
-    const scope = clean_(row[7], 80) || '指定なし';
+    const explicitScope = clean_(row[7], 80);
     const evidence = clean_(row[8], 80) || '利用者提供・確認済み';
     const reason = clean_(row[9], 300) || '利用者から寄せられ、確認済みの継続候補です。';
+    const scope = inferScope_(explicitScope, memo, reason);
     const markets = [];
     const market1 = clean_(row[10], 40);
     const url1 = safeHttpUrl_(row[11]);
@@ -126,6 +139,29 @@ function buildSiteSyncJs_() {
     generatedAt: new Date().toISOString()
   };
   return 'window.COC_SHEET_SYNC=' + JSON.stringify(payload) + ';';
+}
+
+function normalizeScope_(value) {
+  const s = clean_(value, 80);
+  if (!s || /^(指定なし|不明|未設定|問わない)$/.test(s)) return '';
+  if (/1人|一人|ソロ|HO単位|片ロス/.test(s)) return '1人・HO単位';
+  if (/タイマン|KPC|PC|ペア|2人|二人|ふたり/.test(s)) return 'ペア';
+  if (/自陣全員|複数人|複数|全員|グループ|3人|三人|4人|四人|5人|五人|6人|六人/.test(s)) return '自陣全員・複数人';
+  return s;
+}
+
+function inferScope_(explicitScope, memo, reason) {
+  const explicit = normalizeScope_(explicitScope);
+  if (explicit) return explicit;
+
+  const text = clean_([memo, reason].filter(Boolean).join(' '), 800);
+  if (!text) return '指定なし';
+
+  // より限定的な表現を先に評価する。
+  if (/片ロス|1人|一人|ソロ|HO単位/.test(text)) return '1人・HO単位';
+  if (/HO\d+KPC|KPC|\/PC|／PC|タイマン|ペア|2人|二人|ふたり/.test(text)) return 'ペア';
+  if (/自陣全員|複数人|複数|全員|グループ|3人|三人|4人|四人|5人|五人|6人|六人/.test(text)) return '自陣全員・複数人';
+  return '指定なし';
 }
 
 function safeHttpUrl_(value) {
