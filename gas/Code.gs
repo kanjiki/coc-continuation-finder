@@ -1,6 +1,7 @@
 const SPREADSHEET_ID = '1O6zm-V9g_CKrjd3I5Ol9aysQFgtzrNoq70OuYRQ9tmQ';
 const REQUEST_SHEET_NAME = 'Requests';
 const FEEDBACK_SHEET_NAME = 'RecommendationFeedback';
+const USAGE_SHEET_NAME = 'UsageEvents';
 const PUBLIC_STATUS = '公開OK';
 
 function doGet(e) {
@@ -23,6 +24,8 @@ function doPost(e) {
       saveCandidateRequest_(payload.data || {});
     } else if (payload.action === 'recommendationFeedback') {
       saveRecommendationFeedback_(payload.data || {});
+    } else if (payload.action === 'usageEvent') {
+      saveUsageEvent_(payload.data || {});
     } else {
       throw new Error('Unknown action');
     }
@@ -82,6 +85,48 @@ function saveRecommendationFeedback_(data) {
     const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(FEEDBACK_SHEET_NAME);
     if (!sheet) throw new Error('RecommendationFeedback sheet not found');
     sheet.appendRow([new Date(), safeCell_(source), safeCell_(target), label, mode, '']);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function saveUsageEvent_(data) {
+  const event = clean_(data.event, 60);
+  const sessionId = clean_(data.sessionId, 80);
+  if (!event || !sessionId) throw new Error('Missing usage event field');
+
+  const allowed = {
+    page_view: true,
+    search_commit: true,
+    result_view: true,
+    scope_filter: true,
+    market_click: true,
+    recommendation_vote: true,
+    candidate_submit: true
+  };
+  if (!allowed[event]) throw new Error('Invalid usage event');
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(USAGE_SHEET_NAME);
+    if (!sheet) throw new Error('UsageEvents sheet not found');
+    sheet.appendRow([
+      new Date(),
+      safeCell_(sessionId),
+      safeCell_(event),
+      safeCell_(clean_(data.sourceScenario, 160)),
+      safeCell_(clean_(data.targetScenario, 160)),
+      safeCell_(clean_(data.scope, 120)),
+      safeCell_(clean_(data.verdict, 40)),
+      safeCell_(clean_(data.market, 40)),
+      safeCell_(clean_(data.mode, 30)),
+      safeCell_(clean_(data.referrer, 180)),
+      safeCell_(clean_(data.deviceClass, 20)),
+      safeCell_(clean_(data.appVersion, 30)),
+      data.success === true ? true : data.success === false ? false : '',
+      safeCell_(clean_(data.note, 240))
+    ]);
   } finally {
     lock.releaseLock();
   }
