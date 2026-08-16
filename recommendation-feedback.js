@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 });
 
 function enhanceCards(root){
-  root.querySelectorAll('.card:not(.caution)').forEach(card=>{
+  root.querySelectorAll('.card').forEach(card=>{
     if(card.querySelector('.recommendation-feedback'))return;
     const title=card.querySelector('h3')?.textContent?.trim();
     const source=document.querySelector('#source')?.value?.trim();
@@ -28,7 +28,7 @@ function enhanceCards(root){
     box.className='recommendation-feedback';
     box.dataset.source=source;
     box.dataset.target=title;
-    box.innerHTML=`<div class="recommendation-feedback-copy"><span>この候補、どう？</span><small>推薦精度の改善に使います</small></div><div class="recommendation-feedback-actions"><button type="button" class="rec-vote rec-vote-fit${saved==='fit'?' selected':''}" data-rec-vote="fit"${saved?' disabled':''}>しっくりくる</button><button type="button" class="rec-vote rec-vote-doubt${saved==='doubt'?' selected':''}" data-rec-vote="doubt"${saved?' disabled':''}>違うかも</button></div><div class="recommendation-feedback-status">${saved?'フィードバック済み。ありがとう。':''}</div>`;
+    box.innerHTML=`<div class="recommendation-feedback-copy"><span>この候補、どう？</span><small>候補判定の改善に使います</small></div><div class="recommendation-feedback-actions"><button type="button" class="rec-vote rec-vote-fit${saved==='fit'?' selected':''}" data-rec-vote="fit"${saved?' disabled':''}>しっくりくる</button><button type="button" class="rec-vote rec-vote-doubt${saved==='doubt'?' selected':''}" data-rec-vote="doubt"${saved?' disabled':''}>違うかも</button></div><div class="recommendation-feedback-status">${saved?'フィードバック済み。ありがとう。':''}</div>`;
     card.append(box);
   });
 }
@@ -53,7 +53,7 @@ async function sendVote(button){
     await fetch(ENDPOINT,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body,keepalive:true});
     saveVote(source,target,verdict);
     buttons.forEach(b=>b.classList.toggle('selected',b.dataset.recVote===verdict));
-    setStatus(box,'送信しました。推薦を育てる材料にします。','success');
+    setStatus(box,'送信しました。候補判定を育てる材料にします。','success');
   }catch(err){
     buttons.forEach(b=>b.disabled=false);
     setStatus(box,'送信できませんでした。もう一度お試しください。','error');
