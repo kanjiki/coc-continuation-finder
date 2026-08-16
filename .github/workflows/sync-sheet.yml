@@ -1,0 +1,46 @@
+name: Sync approved recommendations
+
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sheet-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Fetch approved rows from Apps Script
+        env:
+          SYNC_URL: https://script.google.com/macros/s/AKfycbwy7AqfUP9gQRi5gjA67c17Xd96rWeo1ptEp1-qZOmapWxqlhstSKYrRKWJJrCA-QU-VA/exec
+        run: |
+          set -euo pipefail
+          curl -L --fail --silent --show-error "${SYNC_URL}?action=siteSync" -o /tmp/sheet-sync.js
+          grep -q '^window.COC_SHEET_SYNC=' /tmp/sheet-sync.js
+          if grep -q '"error":true' /tmp/sheet-sync.js; then
+            echo 'Apps Script returned an error payload.' >&2
+            exit 1
+          fi
+          cp /tmp/sheet-sync.js data/sheet-sync.js
+
+      - name: Commit only when data changed
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- data/sheet-sync.js; then
+            echo 'No approved-data changes.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/sheet-sync.js
+          git commit -m 'Sync approved recommendations from Google Sheets'
+          git push
