@@ -28,6 +28,10 @@ jobs:
         run: |
           set -euo pipefail
           curl -L --fail --silent --show-error "${SYNC_URL}?action=siteSync" -o /tmp/sheet-sync.js
+          echo "Response bytes: $(wc -c < /tmp/sheet-sync.js)"
+          echo 'Response prefix:'
+          head -c 240 /tmp/sheet-sync.js | tr '\n' ' '
+          echo
           grep -q '^window.COC_SHEET_SYNC=' /tmp/sheet-sync.js
           if grep -q '"error":true' /tmp/sheet-sync.js; then
             echo 'Apps Script returned an error payload.' >&2
