@@ -5,6 +5,9 @@ function createOption(value,label){const o=document.createElement('option');o.va
 function setField(label,input,title,placeholder){label.className='mini-field';const span=document.createElement('span');span.textContent=title;input.type='text';input.maxLength=80;input.placeholder=placeholder;label.append(span,input)}
 function renumber(){const rows=[...document.querySelectorAll('.candidate-row')];rows.forEach((row,i)=>{const n=row.querySelector('.candidate-number');if(n)n.textContent=String(i+1).padStart(2,'0')})}
 function toast(text){const el=document.querySelector('#toast');if(!el)return;el.textContent=text;el.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.remove('show'),2200)}
+function collectCandidates(){const seen=new Set(),rows=[];for(const input of document.querySelectorAll('.candidate-input')){const name=input.value.trim();if(!name||seen.has(name))continue;seen.add(name);rows.push({name,row:input.closest('.candidate-row')});if(rows.length>=10)break}return rows}
+function updateLiveCount(){const n=collectCandidates().length;const count=document.querySelector('#requestCount');if(count)count.textContent=`${n}件`;document.querySelector('#sendRequest')?.classList.toggle('ready',n>0)}
+function bindCandidateInput(input){if(!input||input.dataset.countBound==='1')return;input.dataset.countBound='1';input.addEventListener('input',updateLiveCount);input.addEventListener('change',updateLiveCount)}
 function ensureCandidateRow(){
   const container=document.querySelector('#candidateFields');
   if(!container||container.querySelector('.candidate-input'))return;
@@ -12,19 +15,20 @@ function ensureCandidateRow(){
   const number=document.createElement('span');number.className='candidate-number';number.textContent='01';
   const input=document.createElement('input');input.type='text';input.maxLength=160;input.autocomplete='off';input.className='candidate-input';input.placeholder='継続先シナリオの正式名称';
   const remove=document.createElement('button');remove.type='button';remove.className='candidate-remove invisible';remove.setAttribute('aria-label','この入力欄を削除');remove.textContent='×';
+  bindCandidateInput(input);
   input.addEventListener('input',()=>{
     if(!input.value.trim())return;
     const rows=[...container.querySelectorAll('.candidate-row')];
     if(rows.length===1&&rows.length<10){
       const next=document.createElement('div');next.className='candidate-row';
       const nn=document.createElement('span');nn.className='candidate-number';
-      const ni=document.createElement('input');ni.type='text';ni.maxLength=160;ni.autocomplete='off';ni.className='candidate-input';ni.placeholder='継続先シナリオの正式名称';
+      const ni=document.createElement('input');ni.type='text';ni.maxLength=160;ni.autocomplete='off';ni.className='candidate-input';ni.placeholder='継続先シナリオの正式名称';bindCandidateInput(ni);
       const nr=document.createElement('button');nr.type='button';nr.className='candidate-remove';nr.textContent='×';nr.setAttribute('aria-label','この入力欄を削除');
-      nr.addEventListener('click',()=>{next.remove();renumber()});
-      next.append(nn,ni,nr);container.append(next);augmentRow(next);renumber();
+      nr.addEventListener('click',()=>{next.remove();renumber();updateLiveCount()});
+      next.append(nn,ni,nr);container.append(next);augmentRow(next);renumber();updateLiveCount();
     }
   },{once:true});
-  row.append(number,input,remove);container.append(row);renumber();
+  row.append(number,input,remove);container.append(row);renumber();updateLiveCount();
 }
 
 function updateDetailUI(row){
@@ -45,9 +49,11 @@ function updateDetailUI(row){
 }
 
 function augmentRow(row){
-  if(!row||row.dataset.scopeReady==='1')return;
+  if(!row)return;
   const input=row.querySelector('.candidate-input');
   if(!input)return;
+  bindCandidateInput(input);
+  if(row.dataset.scopeReady==='1')return;
   row.dataset.scopeReady='1';
   const main=document.createElement('div');main.className='candidate-main';
   input.parentNode.insertBefore(main,input);main.appendChild(input);
@@ -67,10 +73,9 @@ function augmentRow(row){
   const soloField=document.createElement('label');soloField.className='mini-field candidate-solo-field hidden';const soloTitle=document.createElement('span');soloTitle.textContent='使用するHO・対象';const solo=document.createElement('input');solo.type='text';solo.maxLength=80;solo.className='candidate-solo';solo.placeholder='例：HO2 / 残されたPC';soloField.append(soloTitle,solo);
   detail.append(detailTitle,pairFields,tiebreakFields,soloField);row.append(detail);scope.addEventListener('change',()=>updateDetailUI(row));updateDetailUI(row);
 }
-function augmentAll(){ensureCandidateRow();document.querySelectorAll('.candidate-row').forEach(augmentRow)}
+function augmentAll(){ensureCandidateRow();document.querySelectorAll('.candidate-row').forEach(augmentRow);updateLiveCount()}
 function findCandidateRow(name){return [...document.querySelectorAll('.candidate-row')].find(row=>{const input=row.querySelector('.candidate-input');return input&&input.value.trim()===name})}
 function detailFromRow(row){if(!row)return{scope:'',scopeDetail:''};const scope=String(row.querySelector('.candidate-scope-select')?.value||'').trim();let detail='';if(scope==='ペア'){const pc1=String(row.querySelector('.candidate-pc1')?.value||'').trim();const pc2=String(row.querySelector('.candidate-pc2')?.value||'').trim();detail=[pc1&&`PC1: ${pc1}`,pc2&&`PC2: ${pc2}`].filter(Boolean).join('／')}else if(scope==='タイマン'){const kpc=String(row.querySelector('.candidate-kpc')?.value||'').trim();const pc=String(row.querySelector('.candidate-pc')?.value||'').trim();detail=[kpc&&`KPC: ${kpc}`,pc&&`PC: ${pc}`].filter(Boolean).join('／')}else if(scope==='1人・HO単位'){const solo=String(row.querySelector('.candidate-solo')?.value||'').trim();if(solo)detail=`HO: ${solo}`}return{scope,scopeDetail:detail}}
-function collectCandidates(){const seen=new Set(),rows=[];for(const input of document.querySelectorAll('.candidate-input')){const name=input.value.trim();if(!name||seen.has(name))continue;seen.add(name);rows.push({name,row:input.closest('.candidate-row')});if(rows.length>=10)break}return rows}
 
 async function fallbackSubmit(){
   const source=String(document.querySelector('#requestSource')?.value||'').trim();
@@ -91,7 +96,6 @@ async function fallbackSubmit(){
       return nativeFetch(endpoint,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body,keepalive:true});
     }));
     document.querySelector('#candidateFields').innerHTML='';ensureCandidateRow();augmentAll();
-    const count=document.querySelector('#requestCount');if(count)count.textContent='0件';
     if(status)status.textContent=`${candidates.length}件の候補を送信しました。ありがとうございます。`;toast(`${candidates.length}件を送信しました`);
   }catch(err){if(status)status.textContent='送信に失敗しました。もう一度お試しください。';toast('送信できませんでした')}finally{if(button)button.disabled=false}
 }
@@ -101,7 +105,6 @@ document.addEventListener('DOMContentLoaded',()=>{
   const fields=document.querySelector('#candidateFields');if(fields)observer.observe(fields,{childList:true,subtree:true});
   augmentAll();setTimeout(augmentAll,100);setTimeout(augmentAll,600);
   const button=document.querySelector('#sendRequest');
-  // app.js が正常なら既存 onclick を優先し、初期化失敗時のみこちらを使う。
   if(button&&!button.onclick)button.addEventListener('click',fallbackSubmit);
 });
 
