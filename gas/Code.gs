@@ -243,9 +243,15 @@ function extractMeta_(html, key) {
 }
 
 function attr_(tag, name) {
-  const re = new RegExp(name + '\\s*=\\s*(["\\\'])([\\s\\S]*?)\\1', 'i');
-  const m = String(tag || '').match(re);
-  return m ? m[2] : '';
+  const patterns = [
+    new RegExp(name + '\\s*=\\s*"([^"]*)"', 'i'),
+    new RegExp(name + "\\s*=\\s*'([^']*)'", 'i')
+  ];
+  for (let i = 0; i < patterns.length; i++) {
+    const m = String(tag || '').match(patterns[i]);
+    if (m) return m[1];
+  }
+  return '';
 }
 
 function summarizeBoothDescription_(value) {
@@ -282,7 +288,7 @@ function decodeHtml_(value) {
 }
 
 function isBoothUrl_(url) {
-  return /^https:\/\/[^/]*booth\.pm\/items\/\d+/i.test(String(url || ''));
+  return /^https:\/\/[^/]*booth\.pm\/(?:[a-z]{2}\/)?items\/\d+/i.test(String(url || ''));
 }
 
 function buildFeedbackSummary_(ss) {
