@@ -1,4 +1,5 @@
 (()=>{'use strict';
+// Resilient mounting: source can come from the native select, query string, or visible search field.
 const CONFIG=window.COC_CONFIG||{};
 const ENABLED=CONFIG.recommendationFeedbackEnabled===true;
 const ENDPOINT=String(CONFIG.candidateRequestEndpoint||'').trim();
