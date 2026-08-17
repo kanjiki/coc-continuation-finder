@@ -1,5 +1,5 @@
 (()=>{'use strict';
-const VERSION='0.13.0';
+const VERSION='0.14.0';
 const STORAGE_KEY='cocContinuationSessionId';
 const endpoint=()=>String((window.COC_CONFIG&&window.COC_CONFIG.candidateRequestEndpoint)||'').trim();
 
@@ -18,18 +18,22 @@ function scopeLabel(){return document.querySelector('#scope')?.selectedOptions?.
 function post(event,extra={}){
   const url=endpoint();if(!url)return;
   const data={event,sessionId:sessionId(),sourceScenario:sourceScenario(),mode:mode(),referrer:coarseReferrer(),deviceClass:deviceClass(),appVersion:VERSION,...extra};
+  if((event==='search_commit'||event==='result_view'||event==='scope_filter')&&!String(data.sourceScenario||'').trim())return;
   try{
     const body=new URLSearchParams({payload:JSON.stringify({action:'usageEvent',data})}).toString();
     fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body,keepalive:true}).catch(()=>{});
   }catch{}
 }
 function targetFrom(el){return el?.closest('.card')?.querySelector('h3')?.textContent?.trim()||''}
+function nonEmptyCandidates(){return [...document.querySelectorAll('.candidate-input')].map(x=>x.value.trim()).filter(Boolean)}
 
 let lastResultKey='';
+let lastSearchSource='';
 function observeResults(){
   const summary=document.querySelector('#summary'),results=document.querySelector('#results');if(!summary||!results)return;
   const fire=()=>{
     const source=sourceScenario();if(!source||results.classList.contains('empty'))return;
+    if(source!==lastSearchSource){lastSearchSource=source;post('search_commit',{sourceScenario:source,note:'resolved'})}
     const key=`${source}|${document.querySelector('#scope')?.value||''}|${summary.textContent}`;
     if(key===lastResultKey)return;lastResultKey=key;
     post('result_view',{scope:scopeLabel(),note:summary.textContent.trim()});
@@ -39,12 +43,27 @@ function observeResults(){
   fire();
 }
 
+let pendingSubmit=null;
+function observeCandidateSubmit(){
+  const status=document.querySelector('#requestStatus');if(!status)return;
+  new MutationObserver(()=>{
+    if(!pendingSubmit)return;
+    const text=status.textContent||'';
+    if(/件の候補を送信しました/.test(text)){
+      post('candidate_submit',{sourceScenario:pendingSubmit.source,note:`candidates:${pendingSubmit.count}`,success:true});
+      pendingSubmit=null;
+    }else if(/送信に失敗/.test(text)){
+      pendingSubmit=null;
+    }
+  }).observe(status,{childList:true,subtree:true,characterData:true});
+}
+
 document.addEventListener('DOMContentLoaded',()=>{
-  post('page_view');observeResults();
-  document.querySelector('#go')?.addEventListener('click',()=>post('search_commit',{note:'button'}));
-  document.querySelector('#scope')?.addEventListener('change',e=>post('scope_filter',{scope:e.target.selectedOptions?.[0]?.textContent||''}));
+  post('page_view');observeResults();observeCandidateSubmit();
+  document.querySelector('#scope')?.addEventListener('change',e=>{
+    const source=sourceScenario();if(source)post('scope_filter',{sourceScenario:source,scope:e.target.selectedOptions?.[0]?.textContent||''});
+  });
   document.addEventListener('click',e=>{
-    const sourceResult=e.target.closest?.('[data-source-name]');if(sourceResult)post('search_commit',{sourceScenario:sourceResult.dataset.sourceName||'',note:'suggestion'});
     const market=e.target.closest?.('.markets a');if(market)post('market_click',{targetScenario:targetFrom(market),market:market.textContent.replace('↗','').trim(),success:true});
     const vote=e.target.closest?.('button');
     if(vote){
@@ -54,8 +73,9 @@ document.addEventListener('DOMContentLoaded',()=>{
     }
   });
   document.querySelector('#sendRequest')?.addEventListener('click',()=>{
-    const count=document.querySelectorAll('.candidate-input').length;
-    post('candidate_submit',{note:`fields:${count}`});
+    const source=document.querySelector('#requestSource')?.value.trim()||'';
+    const count=nonEmptyCandidates().length;
+    pendingSubmit=source&&count?{source,count}:null;
   });
 });
 })();
