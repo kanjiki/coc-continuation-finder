@@ -3,10 +3,14 @@ const REQUEST_SHEET_NAME = 'Requests';
 const FEEDBACK_SHEET_NAME = 'RecommendationFeedback';
 const USAGE_SHEET_NAME = 'UsageEvents';
 const PUBLIC_STATUS = '公開OK';
+const SCENARIO_INTRO_COLUMN = 15;
 
 function doGet(e) {
   try {
     const action = String((e && e.parameter && e.parameter.action) || '');
+    if (action === 'refreshIntros') {
+      return text_(JSON.stringify({ ok: true, updated: refreshScenarioIntros_(5) }));
+    }
     if (action !== 'siteSync') return text_('ERROR');
     return ContentService.createTextOutput(buildSiteSyncJs_())
       .setMimeType(ContentService.MimeType.JAVASCRIPT);
@@ -141,7 +145,7 @@ function buildSiteSyncJs_() {
   const sourceSet = {};
 
   if (lastRow >= 2) {
-    const rows = sheet.getRange(2, 1, lastRow - 1, 14).getDisplayValues();
+    const rows = sheet.getRange(2, 1, lastRow - 1, 15).getDisplayValues();
     rows.forEach(function(row) {
       const source = clean_(row[1], 160);
       const target = clean_(row[2], 160);
@@ -154,6 +158,7 @@ function buildSiteSyncJs_() {
       const evidence = clean_(row[8], 80) || '利用者提供・確認済み';
       const reason = clean_(row[9], 300) || '利用者から寄せられ、確認済みの継続候補です。';
       const scope = inferScope_(explicitScope, memo, reason);
+      const scenarioIntro = clean_(row[14], 240);
       const markets = [];
       const market1 = clean_(row[10], 40);
       const url1 = safeHttpUrl_(row[11]);
@@ -169,6 +174,7 @@ function buildSiteSyncJs_() {
         c: scope,
         e: evidence,
         r: reason,
+        i: scenarioIntro,
         st: publicType === '注意' ? '注意' : '推薦',
         d: markets
       };
@@ -180,6 +186,103 @@ function buildSiteSyncJs_() {
   const feedback = buildFeedbackSummary_(ss);
   const payload = {sources: sources, edges: edges, feedback: feedback, generatedAt: new Date().toISOString()};
   return 'window.COC_SHEET_SYNC=' + JSON.stringify(payload) + ';';
+}
+
+function refreshScenarioIntros_(limit) {
+  const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(REQUEST_SHEET_NAME);
+  if (!sheet) throw new Error('Requests sheet not found');
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return 0;
+
+  const rows = sheet.getRange(2, 1, lastRow - 1, 15).getDisplayValues();
+  let updated = 0;
+  const maxRows = Math.max(1, Math.min(Number(limit) || 5, 10));
+
+  for (let i = 0; i < rows.length && updated < maxRows; i++) {
+    const row = rows[i];
+    if (clean_(row[14], 240)) continue;
+    const boothUrl = [row[11], row[13]].map(safeHttpUrl_).find(isBoothUrl_);
+    if (!boothUrl) continue;
+
+    try {
+      const intro = fetchBoothIntro_(boothUrl);
+      if (!intro) continue;
+      sheet.getRange(i + 2, SCENARIO_INTRO_COLUMN).setValue(safeCell_(intro)).setWrap(true);
+      updated++;
+      Utilities.sleep(250);
+    } catch (err) {
+      console.warn('scenario_intro failed row ' + (i + 2) + ': ' + err);
+    }
+  }
+  return updated;
+}
+
+function fetchBoothIntro_(url) {
+  const response = UrlFetchApp.fetch(url, {
+    method: 'get',
+    followRedirects: true,
+    muteHttpExceptions: true,
+    headers: { 'Accept-Language': 'ja,en;q=0.8' }
+  });
+  const code = response.getResponseCode();
+  if (code < 200 || code >= 300) return '';
+  const html = response.getContentText('UTF-8');
+  const raw = extractMeta_(html, 'og:description') || extractMeta_(html, 'description');
+  return summarizeBoothDescription_(raw);
+}
+
+function extractMeta_(html, key) {
+  const tags = String(html || '').match(/<meta\b[^>]*>/gi) || [];
+  for (let i = 0; i < tags.length; i++) {
+    const tag = tags[i];
+    const property = attr_(tag, 'property');
+    const name = attr_(tag, 'name');
+    if (property === key || name === key) return decodeHtml_(attr_(tag, 'content'));
+  }
+  return '';
+}
+
+function attr_(tag, name) {
+  const re = new RegExp(name + '\\s*=\\s*(["\\\'])([\\s\\S]*?)\\1', 'i');
+  const m = String(tag || '').match(re);
+  return m ? m[2] : '';
+}
+
+function summarizeBoothDescription_(value) {
+  let s = decodeHtml_(String(value || ''))
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/https?:\/\/\S+/g, ' ')
+    .replace(/[\r\n\t]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/^(BOOTH|pixivFACTORY)\s*[-｜|:]?\s*/i, '')
+    .trim();
+  if (!s) return '';
+
+  const sentences = s.split(/(?<=[。！？!?])/).map(function(x) { return x.trim(); }).filter(Boolean);
+  let out = '';
+  for (let i = 0; i < sentences.length; i++) {
+    if ((out + sentences[i]).length > 120) break;
+    out += sentences[i];
+    if (out.length >= 55) break;
+  }
+  if (!out) out = s.slice(0, 117) + (s.length > 117 ? '…' : '');
+  if (out.length > 120) out = out.slice(0, 117) + '…';
+  return out;
+}
+
+function decodeHtml_(value) {
+  return String(value || '')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&amp;/gi, '&')
+    .replace(/&#(\d+);/g, function(_, n) { return String.fromCharCode(Number(n)); })
+    .replace(/&#x([0-9a-f]+);/gi, function(_, n) { return String.fromCharCode(parseInt(n, 16)); });
+}
+
+function isBoothUrl_(url) {
+  return /^https:\/\/[^/]*booth\.pm\/items\/\d+/i.test(String(url || ''));
 }
 
 function buildFeedbackSummary_(ss) {
