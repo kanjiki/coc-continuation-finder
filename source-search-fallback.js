@@ -1,6 +1,6 @@
 (()=>{'use strict';
 function norm(v){return String(v??'').normalize('NFKC').toLowerCase().replace(/[ァ-ヶ]/g,c=>String.fromCharCode(c.charCodeAt(0)-0x60)).replace(/[\s・･!！?？"'“”‘’「」『』【】（）()［］\[\]＿_ー－—–・,.，。:：;；/\\]/g,'')}
-function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]))}
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function getData(){const c=window.COC_CUSTOM;return{sources:c&&Array.isArray(c.sources)?c.sources:(Array.isArray(window.COC_SOURCES)?window.COC_SOURCES:[]),edges:c&&Array.isArray(c.edges)?c.edges:(Array.isArray(window.COC_EDGES)?window.COC_EDGES:[])}}
 function matches(raw){const q=norm(raw);if(!q)return[];return getData().sources.map(s=>({s,n:norm(s.n),a:(Array.isArray(s.a)?s.a:[]).map(norm)})).map(x=>({x,score:x.n===q?0:x.a.includes(q)?1:x.n.startsWith(q)?2:x.a.some(a=>a.startsWith(q))?3:x.n.includes(q)?4:x.a.some(a=>a.includes(q))?5:99})).filter(x=>x.score<99).sort((a,b)=>a.score-b.score||a.x.s.n.localeCompare(b.x.s.n,'ja')).slice(0,12).map(x=>x.x.s)}
 function scopeType(v){const s=String(v??'').normalize('NFKC').trim();if(!s||/^(指定なし|不明|未設定|問わない|制限なし)$/.test(s))return'';if(/1人|一人|ひとり|ソロ|HO単位|片ロス/.test(s))return'solo';if(/タイマン|KPC/.test(s))return'tie';if(/ペア|2人|二人|ふたり|PC1|PC2|PC①|PC②/.test(s))return'pair';if(/自陣全員|複数人|複数|全員|グループ|3人|三人|4人|四人|5人|五人|6人|六人/.test(s))return'group';return''}
