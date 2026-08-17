@@ -12,7 +12,7 @@ function doGet(e) {
       .setMimeType(ContentService.MimeType.JAVASCRIPT);
   } catch (err) {
     console.error(err);
-    return ContentService.createTextOutput('window.COC_SHEET_SYNC={sources:[],edges:[],error:true};')
+    return ContentService.createTextOutput('window.COC_SHEET_SYNC={sources:[],edges:[],feedback:{},error:true};')
       .setMimeType(ContentService.MimeType.JAVASCRIPT);
   }
 }
@@ -133,59 +133,89 @@ function saveUsageEvent_(data) {
 }
 
 function buildSiteSyncJs_() {
-  const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(REQUEST_SHEET_NAME);
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName(REQUEST_SHEET_NAME);
   if (!sheet) throw new Error('Requests sheet not found');
   const lastRow = sheet.getLastRow();
-  if (lastRow < 2) return 'window.COC_SHEET_SYNC={sources:[],edges:[],generatedAt:"' + new Date().toISOString() + '"};';
-
-  const rows = sheet.getRange(2, 1, lastRow - 1, 14).getDisplayValues();
   const edgeMap = {};
   const sourceSet = {};
 
-  rows.forEach(function(row) {
-    const source = clean_(row[1], 160);
-    const target = clean_(row[2], 160);
-    const status = clean_(row[4], 40);
-    if (!source || !target || status !== PUBLIC_STATUS) return;
+  if (lastRow >= 2) {
+    const rows = sheet.getRange(2, 1, lastRow - 1, 14).getDisplayValues();
+    rows.forEach(function(row) {
+      const source = clean_(row[1], 160);
+      const target = clean_(row[2], 160);
+      const status = clean_(row[4], 40);
+      if (!source || !target || status !== PUBLIC_STATUS) return;
 
-    const memo = clean_(row[5], 500);
-    const publicType = clean_(row[6], 20) || '推薦';
-    const explicitScope = clean_(row[7], 160);
-    const evidence = clean_(row[8], 80) || '利用者提供・確認済み';
-    const reason = clean_(row[9], 300) || '利用者から寄せられ、確認済みの継続候補です。';
-    const scope = inferScope_(explicitScope, memo, reason);
-    const markets = [];
-    const market1 = clean_(row[10], 40);
-    const url1 = safeHttpUrl_(row[11]);
-    const market2 = clean_(row[12], 40);
-    const url2 = safeHttpUrl_(row[13]);
-    if (market1 && url1) markets.push([market1, url1]);
-    if (market2 && url2) markets.push([market2, url2]);
+      const memo = clean_(row[5], 500);
+      const publicType = clean_(row[6], 20) || '推薦';
+      const explicitScope = clean_(row[7], 160);
+      const evidence = clean_(row[8], 80) || '利用者提供・確認済み';
+      const reason = clean_(row[9], 300) || '利用者から寄せられ、確認済みの継続候補です。';
+      const scope = inferScope_(explicitScope, memo, reason);
+      const markets = [];
+      const market1 = clean_(row[10], 40);
+      const url1 = safeHttpUrl_(row[11]);
+      const market2 = clean_(row[12], 40);
+      const url2 = safeHttpUrl_(row[13]);
+      if (market1 && url1) markets.push([market1, url1]);
+      if (market2 && url2) markets.push([market2, url2]);
 
-    sourceSet[source] = true;
-    edgeMap[source + '\u0000' + target] = {
-      s: source,
-      t: target,
-      c: scope,
-      e: evidence,
-      r: reason,
-      st: publicType === '注意' ? '注意' : '推薦',
-      d: markets
-    };
-  });
+      sourceSet[source] = true;
+      edgeMap[source + '\u0000' + target] = {
+        s: source,
+        t: target,
+        c: scope,
+        e: evidence,
+        r: reason,
+        st: publicType === '注意' ? '注意' : '推薦',
+        d: markets
+      };
+    });
+  }
 
   const sources = Object.keys(sourceSet).sort().map(function(name) { return { n: name }; });
   const edges = Object.keys(edgeMap).sort().map(function(key) { return edgeMap[key]; });
-  const payload = {sources: sources, edges: edges, generatedAt: new Date().toISOString()};
+  const feedback = buildFeedbackSummary_(ss);
+  const payload = {sources: sources, edges: edges, feedback: feedback, generatedAt: new Date().toISOString()};
   return 'window.COC_SHEET_SYNC=' + JSON.stringify(payload) + ';';
+}
+
+function buildFeedbackSummary_(ss) {
+  const sheet = ss.getSheetByName(USAGE_SHEET_NAME);
+  if (!sheet || sheet.getLastRow() < 2) return {};
+
+  const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, 14).getDisplayValues();
+  const seen = {};
+  const out = {};
+
+  rows.forEach(function(row) {
+    if (clean_(row[2], 60) !== 'recommendation_vote') return;
+    const sessionId = clean_(row[1], 80);
+    const source = clean_(row[3], 160);
+    const target = clean_(row[4], 160);
+    const verdict = clean_(row[6], 40);
+    if (!sessionId || !source || !target || (verdict !== 'fit' && verdict !== 'doubt')) return;
+
+    const voteKey = sessionId + '\u0000' + source + '\u0000' + target + '\u0000' + verdict;
+    if (seen[voteKey]) return;
+    seen[voteKey] = true;
+
+    const edgeKey = source + '\u0000' + target;
+    if (!out[edgeKey]) out[edgeKey] = {fit: 0, doubt: 0};
+    out[edgeKey][verdict] += 1;
+  });
+
+  return out;
 }
 
 function scopeBase_(value) {
   const s = clean_(value, 160);
   if (!s || /^(指定なし|不明|未設定|問わない)$/.test(s)) return '';
-  if (/^タイマン(?:｜|$)/.test(s)) return 'タイマン';
+  if (/^タイマン(?:｜|$)|KPC/.test(s)) return 'タイマン';
   if (/1人|一人|ソロ|HO単位|片ロス/.test(s)) return '1人・HO単位';
-  if (/タイマン|KPC|PC|ペア|2人|二人|ふたり/.test(s)) return 'ペア';
+  if (/ペア|2人|二人|ふたり|PC1|PC2|PC①|PC②/.test(s)) return 'ペア';
   if (/自陣全員|複数人|複数|全員|グループ|3人|三人|4人|四人|5人|五人|6人|六人/.test(s)) return '自陣全員・複数人';
   return '';
 }
@@ -216,7 +246,8 @@ function inferScope_(explicitScope, memo, reason) {
   if (!text) return '指定なし';
 
   if (/片ロス|1人|一人|ソロ|HO単位/.test(text)) return '1人・HO単位';
-  if (/HO\d+KPC|KPC|\/PC|／PC|タイマン|ペア|2人|二人|ふたり/.test(text)) return 'ペア';
+  if (/HO\d+KPC|KPC|タイマン/.test(text)) return 'タイマン';
+  if (/ペア|2人|二人|ふたり|PC1|PC2|PC①|PC②/.test(text)) return 'ペア';
   if (/自陣全員|複数人|複数|全員|グループ|3人|三人|4人|四人|5人|五人|6人|六人/.test(text)) return '自陣全員・複数人';
   return '指定なし';
 }
