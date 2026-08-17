@@ -22,6 +22,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Refresh missing BOOTH scenario intros
+        env:
+          SYNC_URL: https://script.google.com/macros/s/AKfycbwy7AqfUP9gQRi5gjA67c17Xd96rWeo1ptEp1-qZOmapWxqlhstSKYrRKWJJrCA-QU-VA/exec
+        run: |
+          set -euo pipefail
+          # Non-blocking: site sync should still run if BOOTH temporarily rejects a fetch.
+          curl -L --silent --show-error "${SYNC_URL}?action=refreshIntros" || true
+
       - name: Fetch approved rows from Apps Script
         env:
           SYNC_URL: https://script.google.com/macros/s/AKfycbwy7AqfUP9gQRi5gjA67c17Xd96rWeo1ptEp1-qZOmapWxqlhstSKYrRKWJJrCA-QU-VA/exec
