@@ -28,7 +28,12 @@ function rank(){
     if(a.doubt!==b.doubt)return a.doubt-b.doubt;
     return a.index-b.index;
   });
-  decorated.forEach(x=>root.appendChild(x.card));
+  const sorted=decorated.map(x=>x.card);
+  const changed=sorted.some((card,i)=>card!==cards[i]);
+  if(!changed)return;
+  const frag=document.createDocumentFragment();
+  sorted.forEach(card=>frag.appendChild(card));
+  root.appendChild(frag);
 }
 let queued=false;
 function schedule(){if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;rank()})}
