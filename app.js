@@ -100,8 +100,9 @@ function render(){
 
 function card(e){
   const caution=e.st==='注意';
+  const intro=e.i?`<div class="scenario-intro"><b>シナリオ紹介</b><p>${esc(e.i)}</p></div>`:'';
   const markets=e.d&&e.d.length?`<div class="markets"><b>販売・配布元</b>${e.d.map(x=>`<a href="${escA(x[1])}" target="_blank" rel="noopener noreferrer">${esc(x[0])}<span>↗</span></a>`).join('')}</div>`:`<div class="markets"><b>販売・配布元</b><span class="pending">確認中</span></div>`;
-  return `<article class="card${caution?' caution':''}"><div class="cardtop"><h3>${esc(e.t)}</h3><span class="status-dot ${caution?'warn':'good'}"></span></div><div class="badges"><span class="badge ${caution?'warn':'good'}">${esc(e.st)}</span><span class="badge">${esc(e.c)}</span><span class="badge">${esc(e.e)}</span></div><p class="reason">${esc(e.r)}</p>${markets}</article>`
+  return `<article class="card${caution?' caution':''}"><div class="cardtop"><h3>${esc(e.t)}</h3><span class="status-dot ${caution?'warn':'good'}"></span></div><div class="badges"><span class="badge ${caution?'warn':'good'}">${esc(e.st)}</span><span class="badge">${esc(e.c)}</span><span class="badge">${esc(e.e)}</span></div>${intro}<div class="recommend-reason"><b>継続候補になっている理由</b><p class="reason">${esc(e.r)}</p></div>${markets}</article>`
 }
 
 function initCandidateFields(){addCandidateInput();updateRequestCount()}
