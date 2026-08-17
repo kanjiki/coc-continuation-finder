@@ -11,7 +11,7 @@ CoC継続探索者向けのシナリオ候補検索サイトです。CoCプレ�
 ## 公開画面の仕様
 
 - 元シナリオのプルダウンには正式名称だけを表示
-- 継続先ごとに、継続形態・推薦理由・実卓確認種別を表示
+- 継続先ごとに、シナリオ紹介・継続形態・推薦理由・実卓確認種別を表示
 - X等の根拠投稿リンクは公開画面に表示しない
 - BOOTH、pixiv、TALTO等の販売・配布元を表示
 - 直接確認できなかった販売・配布元は「確認中」と表示
@@ -36,10 +36,17 @@ Webアプリの `/exec` URL は `config.js` の `candidateRequestEndpoint` に�
 - 推薦理由
 - 販売元1 / URL1
 - 販売元2 / URL2
+- `scenario_intro`
 
-GitHub Actions の `.github/workflows/sync-sheet.yml` が6時間ごとにApps Scriptの `?action=siteSync` を取得します。
+GitHub Actions の `.github/workflows/sync-sheet.yml` が3時間ごとにApps Scriptを呼びます。
+同期の前に `?action=refreshIntros` を実行し、`scenario_intro` が空欄でBOOTH URLを持つ行を最大5件ずつ補完します。その後 `?action=siteSync` で公開データを取得します。
 内容に変更があったときだけ `data/sheet-sync.js` を更新してコミットし、GitHub Pagesへ反映します。
 手動同期したい場合は GitHub の Actions から `Sync approved recommendations` を `Run workflow` で実行できます。
+
+### scenario_intro
+
+`Requests` のO列です。BOOTH商品ページの公開メタ説明（`og:description` / `description`）を取得し、HTML・URL・余分な空白を除去して120字以内に整形します。
+既に値があるセルは自動処理で上書きしません。BOOTH取得に失敗した場合も通常のサイト同期は継続します。
 
 同期された行は既存データと `元シナリオ + 継続先` で照合し、同じ組み合わせがある場合はスプレッドシート側の公開内容を優先します。
 
@@ -50,7 +57,7 @@ GitHub Actions の `.github/workflows/sync-sheet.yml` が6時間ごとにApps Sc
 3. 表示情報を埋め、掲載してよければ: `公開OK`
 4. 掲載しない場合: `見送り`
 
-`公開OK` にする前に、シナリオ名、継続条件、販売・配布元、推薦理由を確認してください。
+`公開OK` にする前に、シナリオ名、継続対象、販売・配布元、推薦理由を確認してください。
 
 ## データ管理
 
