@@ -9,20 +9,34 @@ if(!ENABLED)return;
 document.addEventListener('DOMContentLoaded',()=>{
   const results=document.querySelector('#results');
   if(!results)return;
-  enhanceCards(results);
-  new MutationObserver(()=>enhanceCards(results)).observe(results,{childList:true,subtree:true});
+  const enhance=()=>enhanceCards(results);
+  enhance();
+  new MutationObserver(enhance).observe(results,{childList:true,subtree:true});
+  document.addEventListener('coc-source-selected',()=>requestAnimationFrame(enhance));
+  document.querySelector('#source')?.addEventListener('change',()=>requestAnimationFrame(enhance));
+  document.querySelector('#go')?.addEventListener('click',()=>setTimeout(enhance,0));
+  document.querySelector('#scope')?.addEventListener('change',()=>setTimeout(enhance,0));
+  document.querySelector('#caution')?.addEventListener('change',()=>setTimeout(enhance,0));
   results.addEventListener('click',event=>{
     const button=event.target.closest('[data-rec-vote]');
     if(button)sendVote(button);
   });
 });
 
+function currentSource(){
+  return document.querySelector('#source')?.value?.trim()
+    ||new URLSearchParams(location.search).get('scenario')?.trim()
+    ||document.querySelector('#sourceSearch')?.value?.trim()
+    ||'';
+}
+
 function enhanceCards(root){
+  const source=currentSource();
+  if(!source)return;
   root.querySelectorAll('.card').forEach(card=>{
     if(card.querySelector('.recommendation-feedback'))return;
     const title=card.querySelector('h3')?.textContent?.trim();
-    const source=document.querySelector('#source')?.value?.trim();
-    if(!title||!source)return;
+    if(!title)return;
     const saved=getSavedVote(source,title);
     const box=document.createElement('div');
     box.className='recommendation-feedback';
