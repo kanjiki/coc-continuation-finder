@@ -4,6 +4,7 @@ const nativeFetch=window.fetch.bind(window);
 function createOption(value,label){const o=document.createElement('option');o.value=value;o.textContent=label;return o}
 function setField(label,input,title,placeholder){label.className='mini-field';const span=document.createElement('span');span.textContent=title;input.type='text';input.maxLength=80;input.placeholder=placeholder;label.append(span,input)}
 function renumber(){const rows=[...document.querySelectorAll('.candidate-row')];rows.forEach((row,i)=>{const n=row.querySelector('.candidate-number');if(n)n.textContent=String(i+1).padStart(2,'0')})}
+function toast(text){const el=document.querySelector('#toast');if(!el)return;el.textContent=text;el.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.remove('show'),2200)}
 function ensureCandidateRow(){
   const container=document.querySelector('#candidateFields');
   if(!container||container.querySelector('.candidate-input'))return;
@@ -12,13 +13,14 @@ function ensureCandidateRow(){
   const input=document.createElement('input');input.type='text';input.maxLength=160;input.autocomplete='off';input.className='candidate-input';input.placeholder='継続先シナリオの正式名称';
   const remove=document.createElement('button');remove.type='button';remove.className='candidate-remove invisible';remove.setAttribute('aria-label','この入力欄を削除');remove.textContent='×';
   input.addEventListener('input',()=>{
-    // app.js が正常ならそちらの自動追加に任せる。異常時だけ最低限の次欄を補う。
     if(!input.value.trim())return;
     const rows=[...container.querySelectorAll('.candidate-row')];
     if(rows.length===1&&rows.length<10){
-      const next=row.cloneNode(false);const nn=document.createElement('span');nn.className='candidate-number';
+      const next=document.createElement('div');next.className='candidate-row';
+      const nn=document.createElement('span');nn.className='candidate-number';
       const ni=document.createElement('input');ni.type='text';ni.maxLength=160;ni.autocomplete='off';ni.className='candidate-input';ni.placeholder='継続先シナリオの正式名称';
-      const nr=document.createElement('button');nr.type='button';nr.className='candidate-remove invisible';nr.textContent='×';nr.setAttribute('aria-label','この入力欄を削除');
+      const nr=document.createElement('button');nr.type='button';nr.className='candidate-remove';nr.textContent='×';nr.setAttribute('aria-label','この入力欄を削除');
+      nr.addEventListener('click',()=>{next.remove();renumber()});
       next.append(nn,ni,nr);container.append(next);augmentRow(next);renumber();
     }
   },{once:true});
@@ -68,9 +70,40 @@ function augmentRow(row){
 function augmentAll(){ensureCandidateRow();document.querySelectorAll('.candidate-row').forEach(augmentRow)}
 function findCandidateRow(name){return [...document.querySelectorAll('.candidate-row')].find(row=>{const input=row.querySelector('.candidate-input');return input&&input.value.trim()===name})}
 function detailFromRow(row){if(!row)return{scope:'',scopeDetail:''};const scope=String(row.querySelector('.candidate-scope-select')?.value||'').trim();let detail='';if(scope==='ペア'){const pc1=String(row.querySelector('.candidate-pc1')?.value||'').trim();const pc2=String(row.querySelector('.candidate-pc2')?.value||'').trim();detail=[pc1&&`PC1: ${pc1}`,pc2&&`PC2: ${pc2}`].filter(Boolean).join('／')}else if(scope==='タイマン'){const kpc=String(row.querySelector('.candidate-kpc')?.value||'').trim();const pc=String(row.querySelector('.candidate-pc')?.value||'').trim();detail=[kpc&&`KPC: ${kpc}`,pc&&`PC: ${pc}`].filter(Boolean).join('／')}else if(scope==='1人・HO単位'){const solo=String(row.querySelector('.candidate-solo')?.value||'').trim();if(solo)detail=`HO: ${solo}`}return{scope,scopeDetail:detail}}
+function collectCandidates(){const seen=new Set(),rows=[];for(const input of document.querySelectorAll('.candidate-input')){const name=input.value.trim();if(!name||seen.has(name))continue;seen.add(name);rows.push({name,row:input.closest('.candidate-row')});if(rows.length>=10)break}return rows}
+
+async function fallbackSubmit(){
+  const source=String(document.querySelector('#requestSource')?.value||'').trim();
+  const candidates=collectCandidates();
+  if(!source){toast('元シナリオ名を入力してください');document.querySelector('#requestSource')?.focus();return}
+  if(!candidates.length){toast('継続先候補を1件以上入力してください');document.querySelector('.candidate-input')?.focus();return}
+  const endpoint=String((window.COC_CONFIG&&window.COC_CONFIG.candidateRequestEndpoint)||'').trim();
+  const button=document.querySelector('#sendRequest');
+  const status=document.querySelector('#requestStatus');
+  if(!endpoint){if(status)status.textContent='現在送信先を確認できません。';toast('送信先を確認できません');return}
+  if(button)button.disabled=true;if(status)status.textContent=`${candidates.length}件を送信中…`;
+  try{
+    await Promise.all(candidates.map(({name,row})=>{
+      const extra=detailFromRow(row);const data={source,candidate:name,mode:new URLSearchParams(location.search).get('test')==='1'?'test':'public'};
+      if(extra.scope)data.scope=extra.scope;if(extra.scopeDetail)data.scopeDetail=extra.scopeDetail;
+      const payload={action:'candidateRequest',data};
+      const body=new URLSearchParams({payload:JSON.stringify(payload)}).toString();
+      return nativeFetch(endpoint,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body,keepalive:true});
+    }));
+    document.querySelector('#candidateFields').innerHTML='';ensureCandidateRow();augmentAll();
+    const count=document.querySelector('#requestCount');if(count)count.textContent='0件';
+    if(status)status.textContent=`${candidates.length}件の候補を送信しました。ありがとうございます。`;toast(`${candidates.length}件を送信しました`);
+  }catch(err){if(status)status.textContent='送信に失敗しました。もう一度お試しください。';toast('送信できませんでした')}finally{if(button)button.disabled=false}
+}
 
 const observer=new MutationObserver(augmentAll);
-document.addEventListener('DOMContentLoaded',()=>{const fields=document.querySelector('#candidateFields');if(fields)observer.observe(fields,{childList:true,subtree:true});augmentAll();setTimeout(augmentAll,100);setTimeout(augmentAll,600)});
+document.addEventListener('DOMContentLoaded',()=>{
+  const fields=document.querySelector('#candidateFields');if(fields)observer.observe(fields,{childList:true,subtree:true});
+  augmentAll();setTimeout(augmentAll,100);setTimeout(augmentAll,600);
+  const button=document.querySelector('#sendRequest');
+  // app.js が正常なら既存 onclick を優先し、初期化失敗時のみこちらを使う。
+  if(button&&!button.onclick)button.addEventListener('click',fallbackSubmit);
+});
 
 window.fetch=(input,init={})=>{try{const endpoint=String((window.COC_CONFIG&&window.COC_CONFIG.candidateRequestEndpoint)||'').trim();if(endpoint&&String(input)===endpoint&&typeof init.body==='string'){const params=new URLSearchParams(init.body);const raw=params.get('payload');if(raw){const payload=JSON.parse(raw);if(payload&&payload.action==='candidateRequest'){payload.data=payload.data||{};const candidate=String(payload.data.candidate||'').trim();const extra=detailFromRow(findCandidateRow(candidate));if(extra.scope)payload.data.scope=extra.scope;if(extra.scopeDetail)payload.data.scopeDetail=extra.scopeDetail;params.set('payload',JSON.stringify(payload));init={...init,body:params.toString()}}}}}catch(err){console.warn('candidate detail attach skipped',err)}return nativeFetch(input,init)};
 })();
