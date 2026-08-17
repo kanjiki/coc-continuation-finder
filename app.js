@@ -64,16 +64,17 @@ function commitSourceSearch(){
   toast(matches.length?'候補から元シナリオを選んでください':'収録シナリオが見つかりません');
 }
 function selectSource(name){const found=sources.find(x=>x.n===name);if(!found)return;$('#source').value=found.n;$('#sourceSearch').value=found.n;toggleSourceClear();hideSourceResults();search()}
-function clearSourceSearch(){current='';$('#source').value='';$('#sourceSearch').value='';toggleSourceClear();hideSourceResults();renderSourceSearchResults('');const q=new URLSearchParams(location.search);q.delete('scenario');history.replaceState(null,'',`${location.pathname}${q.toString()?`?${q}`:''}`);render();$('#sourceSearch').focus()}
+function clearSourceSearch(){current='';$('#source').value='';$('#sourceSearch').value='';toggleSourceClear();hideSourceResults();renderSourceSearchResults('');const q=new URLSearchParams(location.search);q.delete('scenario');history.replaceState(null,'',`${location.pathname}${q.toString()?`?`${q}`:''}`);render();$('#sourceSearch').focus()}
 function hideSourceResults(){const box=$('#sourceResults');if(box)box.classList.add('hidden');const input=$('#sourceSearch');if(input)input.setAttribute('aria-expanded','false')}
 function toggleSourceClear(){const b=$('#sourceClear');if(b)b.classList.toggle('hidden',!$('#sourceSearch').value)}
 
 function scopeType(v){
-  const s=String(v??'').trim();
-  if(!s||/^(指定なし|不明|未設定|問わない)$/.test(s))return'';
-  if(/1人|一人|ソロ|HO単位|片ロス/.test(s))return'solo';
-  if(/タイマン|KPC|PC|ペア|2人|二人|ふたり/.test(s))return'pair';
-  if(/自陣全員|複数人|複数|全員|グループ|3人|4人|5人|6人/.test(s))return'group';
+  const s=String(v??'').normalize('NFKC').trim();
+  if(!s||/^(指定なし|不明|未設定|問わない|制限なし)$/.test(s))return'';
+  if(/1人|一人|ひとり|ソロ|HO単位|片ロス/.test(s))return'solo';
+  if(/タイマン|KPC/.test(s))return'tie';
+  if(/ペア|2人|二人|ふたり|PC1|PC2|PC①|PC②/.test(s))return'pair';
+  if(/自陣全員|複数人|複数|全員|グループ|3人|三人|4人|四人|5人|五人|6人|六人/.test(s))return'group';
   return'';
 }
 function search(){
