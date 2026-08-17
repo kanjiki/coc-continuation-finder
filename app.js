@@ -64,7 +64,7 @@ function commitSourceSearch(){
   toast(matches.length?'候補から元シナリオを選んでください':'収録シナリオが見つかりません');
 }
 function selectSource(name){const found=sources.find(x=>x.n===name);if(!found)return;$('#source').value=found.n;$('#sourceSearch').value=found.n;toggleSourceClear();hideSourceResults();search()}
-function clearSourceSearch(){current='';$('#source').value='';$('#sourceSearch').value='';toggleSourceClear();hideSourceResults();renderSourceSearchResults('');const q=new URLSearchParams(location.search);q.delete('scenario');history.replaceState(null,'',`${location.pathname}${q.toString()?`?`${q}`:''}`);render();$('#sourceSearch').focus()}
+function clearSourceSearch(){current='';$('#source').value='';$('#sourceSearch').value='';toggleSourceClear();hideSourceResults();renderSourceSearchResults('');const q=new URLSearchParams(location.search);q.delete('scenario');history.replaceState(null,'',`${location.pathname}${q.toString()?`?${q}`:''}`);render();$('#sourceSearch').focus()}
 function hideSourceResults(){const box=$('#sourceResults');if(box)box.classList.add('hidden');const input=$('#sourceSearch');if(input)input.setAttribute('aria-expanded','false')}
 function toggleSourceClear(){const b=$('#sourceClear');if(b)b.classList.toggle('hidden',!$('#sourceSearch').value)}
 
@@ -98,11 +98,19 @@ function render(){
   $('#results').className='cards';$('#results').innerHTML=rows.map(card).join('');
 }
 
+function hasUsefulReason(e){
+  const r=String(e.r||'').trim();
+  if(!r)return false;
+  if(e.st==='注意')return true;
+  if(/(?:KPC|PC(?:\d|①|②)?|HO\d+|片ロス|タイマン|ペア|ソロ|1人|一人|2人|二人|複数人|自陣全員|全員|固定|限定|必須|推奨|不可|ロスト|PvP|PVP|刑事|怪盗|贋作師|極道|人間)/i.test(r))return true;
+  return false;
+}
 function card(e){
   const caution=e.st==='注意';
   const intro=e.i?`<div class="scenario-intro"><b>シナリオ紹介</b><p>${esc(e.i)}</p></div>`:'';
+  const reason=hasUsefulReason(e)?`<div class="recommend-reason"><b>継続時のポイント</b><p class="reason">${esc(e.r)}</p></div>`:'';
   const markets=e.d&&e.d.length?`<div class="markets"><b>販売・配布元</b>${e.d.map(x=>`<a href="${escA(x[1])}" target="_blank" rel="noopener noreferrer">${esc(x[0])}<span>↗</span></a>`).join('')}</div>`:`<div class="markets"><b>販売・配布元</b><span class="pending">確認中</span></div>`;
-  return `<article class="card${caution?' caution':''}"><div class="cardtop"><h3>${esc(e.t)}</h3><span class="status-dot ${caution?'warn':'good'}"></span></div><div class="badges"><span class="badge ${caution?'warn':'good'}">${esc(e.st)}</span><span class="badge">${esc(e.c)}</span><span class="badge">${esc(e.e)}</span></div>${intro}<div class="recommend-reason"><b>継続候補になっている理由</b><p class="reason">${esc(e.r)}</p></div>${markets}</article>`
+  return `<article class="card${caution?' caution':''}"><div class="cardtop"><h3>${esc(e.t)}</h3><span class="status-dot ${caution?'warn':'good'}"></span></div><div class="badges"><span class="badge ${caution?'warn':'good'}">${esc(e.st)}</span><span class="badge">${esc(e.c)}</span><span class="badge">${esc(e.e)}</span></div>${intro}${reason}${markets}</article>`
 }
 
 function initCandidateFields(){addCandidateInput();updateRequestCount()}
