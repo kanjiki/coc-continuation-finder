@@ -57,3 +57,5 @@ jobs:
           git add data/sheet-sync.js
           git commit -m 'Sync approved recommendations from Google Sheets'
           git push origin main
+
+# manual sync trigger: scenario_intro refresh 2026-08-19
