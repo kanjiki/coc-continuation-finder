@@ -1,5 +1,5 @@
 (()=>{'use strict';
-const VERSION='0.16.0';
+const VERSION='0.16.1';
 let loadPromise=null;
 
 function loadScript(src){
@@ -83,6 +83,7 @@ function loadFullData(){
   loadPromise=(async()=>{
     await loadScript(`data/sheet-sync.js?v=${VERSION}`);
     await loadScript(`data/sheet-sync-merge.js?v=${VERSION}`);
+    await loadScript(`source-search-fallback.js?v=${VERSION}`);
     refreshUi();
     await loadScript(`data/feedback-ranking-data.js?v=${VERSION}`);
     await loadScript(`feedback-ranking.js?v=${VERSION}`);
