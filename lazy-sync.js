@@ -33,6 +33,7 @@ function refreshUi(){
   const {sources,edges}=fullData();
   const native=document.querySelector('#source');
   const requestList=document.querySelector('#requestSourceList');
+  const search=document.querySelector('#sourceSearch');
   const selected=native?.value||new URLSearchParams(location.search).get('scenario')||'';
   const sorted=sources.slice().filter(x=>x&&x.n).sort((a,b)=>a.n.localeCompare(b.n,'ja'));
 
@@ -68,11 +69,12 @@ function refreshUi(){
   window.COC_FULL_DATA_READY=true;
   document.dispatchEvent(new CustomEvent('coc-full-data-ready',{detail:{sources:sources.length,edges:edges.length}}));
 
-  const search=document.querySelector('#sourceSearch');
-  if(search?.value.trim())search.dispatchEvent(new Event('input',{bubbles:true}));
   if(selected&&sorted.some(x=>x.n===selected)){
-    native.value=selected;
+    if(native)native.value=selected;
+    if(search&&!search.value.trim())search.value=selected;
     document.querySelector('#go')?.click();
+  }else if(search?.value.trim()){
+    search.dispatchEvent(new Event('input',{bubbles:true}));
   }
 }
 
